@@ -2,17 +2,15 @@
 import re
 import json
 import inspect
-import threading
 import six
 from funcy import memoize, compose, wraps, any
 from funcy.py2 import mapcat
 from .cross import md5hex
 
-import django
 from django.db import models
 from django.http import HttpRequest
 
-from .conf import redis_client, model_profile
+from .conf import model_profile
 
 
 # NOTE: we don't serialize this fields since their values could be very long
@@ -20,9 +18,8 @@ from .conf import redis_client, model_profile
 NOT_SERIALIZED_FIELDS = (
     models.FileField,
     models.TextField, # One should not filter by long text equality
+    models.BinaryField,
 )
-if hasattr(models, 'BinaryField'):
-    NOT_SERIALIZED_FIELDS += (models.BinaryField,)
 
 
 @memoize
@@ -48,14 +45,6 @@ def model_family(model):
 @memoize
 def family_has_profile(cls):
     return any(model_profile, model_family(cls))
-
-
-if django.VERSION < (1, 6):
-    def get_model_name(model):
-        return model._meta.module_name
-else:
-    def get_model_name(model):
-        return model._meta.model_name
 
 
 class MonkeyProxy(object):
@@ -106,6 +95,12 @@ def stamp_fields(model):
 
 ### Cache keys calculation
 
+def obj_key(obj):
+    if isinstance(obj, models.Model):
+        return '%s.%s.%s' % (obj._meta.app_label, obj._meta.model_name, obj.pk)
+    else:
+        return str(obj)
+
 def func_cache_key(func, args, kwargs, extra=None):
     """
     Calculate cache key based on func and arguments
@@ -113,7 +108,7 @@ def func_cache_key(func, args, kwargs, extra=None):
     factors = [func.__module__, func.__name__, args, kwargs, extra]
     if hasattr(func, '__code__'):
         factors.append(func.__code__.co_firstlineno)
-    return md5hex(json.dumps(factors, sort_keys=True, default=str))
+    return md5hex(json.dumps(factors, sort_keys=True, default=obj_key))
 
 def debug_cache_key(func, args, kwargs, extra=None):
     """
@@ -121,7 +116,7 @@ def debug_cache_key(func, args, kwargs, extra=None):
     Handy to use when editing code.
     """
     factors = [func.__module__, func.__name__, args, kwargs, extra]
-    return md5hex(json.dumps(factors, sort_keys=True, default=str))
+    return md5hex(json.dumps(factors, sort_keys=True, default=obj_key))
 
 def view_cache_key(func, args, kwargs, extra=None):
     """
@@ -163,23 +158,6 @@ def cached_view_fab(_cached):
     return cached_view
 
 
-### Lua script loader
-
-import os.path
-
-STRIP_RE = re.compile(r'TOSTRIP.*/TOSTRIP', re.S)
-
-@memoize
-def load_script(name, strip=False):
-    # TODO: strip comments
-    filename = os.path.join(os.path.dirname(__file__), 'lua/%s.lua' % name)
-    with open(filename) as f:
-        code = f.read()
-    if strip:
-        code = STRIP_RE.sub('', code)
-    return redis_client.register_script(code)
-
-
 ### Whitespace handling for template tags
 
 from django.utils.safestring import mark_safe
@@ -191,9 +169,3 @@ def carefully_strip_whitespace(text):
     text = re.sub(r'>\s*\n\s*<', NEWLINE_BETWEEN_TAGS, text)
     text = re.sub(r'>\s{2,}<', SPACE_BETWEEN_TAGS, text)
     return text
-
-
-# This will help mimic thread globals via dicts
-
-def get_thread_id():
-    return threading.current_thread().ident
