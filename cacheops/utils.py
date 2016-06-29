@@ -16,7 +16,6 @@ from .conf import model_profile
 #       and one should not filter by their equality anyway.
 NOT_SERIALIZED_FIELDS = (
     models.FileField,
-    models.TextField, # One should not filter by long text equality
     models.BinaryField,
 )
 
