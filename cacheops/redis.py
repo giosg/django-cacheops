@@ -27,11 +27,8 @@ LOCK_TIMEOUT = 60
 
 
 class CacheopsRedis(redis.StrictRedis):
-    def __init__(self, *args, **kwargs):
-        if 'cacheops_readonly_replica' in kwargs:
-            self.readonly_replica = kwargs['cacheops_readonly_replica']
-        else:
-            self.readonly_replica = None
+    def __init__(self, cacheops_readonly_replica=None, *args, **kwargs):
+        self.readonly_replica = cacheops_readonly_replica
         super().__init__(*args, **kwargs)
 
     #get = handle_connection_failure(redis.StrictRedis.get)
