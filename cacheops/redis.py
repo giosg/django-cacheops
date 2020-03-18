@@ -27,7 +27,18 @@ LOCK_TIMEOUT = 60
 
 
 class CacheopsRedis(redis.StrictRedis):
-    get = handle_connection_failure(redis.StrictRedis.get)
+    def __init__(self, cacheops_readonly_replica=None, *args, **kwargs):
+        self.readonly_replica = cacheops_readonly_replica
+        super().__init__(*args, **kwargs)
+
+    #get = handle_connection_failure(redis.StrictRedis.get)
+
+    @handle_connection_failure
+    def get(self, *args, **kwargs):
+        if self.readonly_replica is not None:
+            return self.readonly_replica.get(*args, **kwargs)
+        else:
+            return super().get(*args, **kwargs)
 
     @contextmanager
     def getting(self, key, lock=False):
@@ -100,11 +111,22 @@ def redis_client():
             db=settings.CACHEOPS_SENTINEL.get('db', 0)
         )
 
+    # Initialize readonly replica if given either by URL or by settings
+    if settings.CACHEOPS_READONLY_REDIS:
+        if isinstance(settings.CACHEOPS_READONLY_REDIS, str):
+            readonly_replica = redis.StrictRedis.from_url(settings.CACHEOPS_READONLY_REDIS)
+        else:
+            readonly_replica = redis.StrictRedis(**settings.CACHEOPS_READONLY_REDIS)
+    else:
+        readonly_replica = None
+
     # Allow client connection settings to be specified by a URL.
     if isinstance(settings.CACHEOPS_REDIS, str):
-        return client_class.from_url(settings.CACHEOPS_REDIS)
+        client = client_class.from_url(settings.CACHEOPS_REDIS)
+        client.readonly_replica = readonly_replica
+        return client
     else:
-        return client_class(**settings.CACHEOPS_REDIS)
+        return client_class(cacheops_readonly_replica=readonly_replica, **settings.CACHEOPS_REDIS)
 
 
 ### Lua script loader
