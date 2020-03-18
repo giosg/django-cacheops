@@ -86,19 +86,9 @@ else:
         }
     }
 
-CACHEOPS_REDIS = {
-    'host': 'localhost',
-    'port': 6379,
-    'db': 13,
-    'socket_timeout': 3,
-}
+CACHEOPS_REDIS = 'redis://localhost:6379/1'
 
-CACHEOPS_READONLY_REDIS = {
-    'host': 'localhost',
-    'port': 6380,
-    'db': 13,
-    'socket_timeout': 3,
-}
+CACHEOPS_READONLY_REDIS = 'redis://localhost:6380/1'
     
 CACHEOPS_DEFAULTS = {
     'timeout': 60*60

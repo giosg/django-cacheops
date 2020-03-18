@@ -1,3 +1,6 @@
+4.2.2
+- support for read/write operation separation
+
 4.2
 - support Django 2.1 and 2.2
 - added keep_fresh option to @cached_as (George Lee)
