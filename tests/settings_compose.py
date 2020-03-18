@@ -20,16 +20,18 @@ if os.environ.get('CACHEOPS_DB') == 'postgresql':
         'default': {
             'ENGINE': 'django.db.backends.postgresql_psycopg2',
             'NAME': 'cacheops',
-            'USER': 'cacheops',
-            'PASSWORD': '',
-            'HOST': ''
+            'USER': 'postgres',
+            'PASSWORD': 'kissanpissa',
+            'HOST': 'localhost',
+            'PORT':5432
         },
         'slave': {
             'ENGINE': 'django.db.backends.postgresql_psycopg2',
             'NAME': 'cacheops_slave',
-            'USER': 'cacheops',
-            'PASSWORD': '',
-            'HOST': ''
+            'USER': 'postgres',
+            'PASSWORD': 'kissanpissa',
+            'HOST': 'localhost',
+            'PORT':5433
         },
     }
 elif os.environ.get('CACHEOPS_DB') == 'postgis':
